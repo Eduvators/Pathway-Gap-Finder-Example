@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pathway Gap Finder</title>
+<meta name="description" content="Sample interactive tool showing whether a class schedule offers the courses a program's pathway requires, with a plain-language summary and options for a scheduling committee. Fictional data.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: analyst's workbench — selector bar, gap table on the left, narrative + decision brief in a reading column on the right; stacks on phones. */
+:root{
+  --bg:#f7f6f3; --panel:#ffffff; --fg:#1d2126; --muted:#5f6771; --line:#d9d6ce;
+  --accent:#045577; --accent-ink:#ffffff; --brand:#a02383;
+  --ok:#2e7d4f; --warn:#b26a00; --bad:#b3261e; --ok-bg:#e5f3ea; --warn-bg:#fdf1dc; --bad-bg:#fbe6e4;
+  --display:"Source Serif 4", Georgia, "Times New Roman", serif;
+  --body:"IBM Plex Sans", "Segoe UI", Helvetica, Arial, sans-serif;
+  --mono:"IBM Plex Mono", Consolas, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#16191d; --panel:#1f2328; --fg:#e8e6e1; --muted:#a5aab2; --line:#363b42;
+  --accent:#6fb7d6; --accent-ink:#0f1a20; --brand:#e07ac4;
+  --ok:#7fcf9c; --warn:#f0b64a; --bad:#f28b82; --ok-bg:#1d3326; --warn-bg:#3a2d12; --bad-bg:#3d1f1c;
+  color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#16191d; --panel:#1f2328; --fg:#e8e6e1; --muted:#a5aab2; --line:#363b42;
+  --accent:#6fb7d6; --accent-ink:#0f1a20; --brand:#e07ac4;
+  --ok:#7fcf9c; --warn:#f0b64a; --bad:#f28b82; --ok-bg:#1d3326; --warn-bg:#3a2d12; --bad-bg:#3d1f1c;
+  color-scheme:dark }
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);line-height:1.5;padding-block:28px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1180px;margin:0 auto}
+header h1{font-family:var(--display);font-weight:600;font-size:2rem;margin:0 0 .25rem;text-wrap:balance}
+.eyebrow{font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 .5rem}
+header p.lede{max-width:68ch;margin:0;color:var(--muted)}
+.note{font-size:.85rem;color:var(--muted);border-left:3px solid var(--brand);padding-left:.75rem;margin:1rem 0 0;max-width:72ch}
+.controls{display:flex;flex-wrap:wrap;gap:1rem 1.5rem;align-items:end;margin:1.5rem 0;padding:1rem;background:var(--panel);border:1px solid var(--line)}
+.ctl{display:flex;flex-direction:column;gap:.3rem;min-width:0}
+.ctl label{font-size:.75rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+select,input[type=range]{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);padding:.4rem .6rem}
+input[type=range]{padding:0;width:220px;max-width:100%}
+.ctl output{font-family:var(--mono);font-size:.9rem}
+select:focus-visible,input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.grid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:1.5rem;align-items:start}
+@media (max-width:860px){.grid{grid-template-columns:1fr}}
+section.card{background:var(--panel);border:1px solid var(--line);padding:1.25rem;min-width:0}
+h2{font-family:var(--display);font-weight:600;font-size:1.25rem;margin:0 0 .25rem}
+h3{font-size:.8rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:1.25rem 0 .4rem}
+.headline{font-family:var(--display);font-size:1.1rem;font-weight:600;margin:0 0 .75rem;text-wrap:balance}
+.tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.75rem;margin:.75rem 0 1rem}
+@media (max-width:480px){.tiles{grid-template-columns:1fr 1fr}}
+.tile{border:1px solid var(--line);padding:.6rem .75rem}
+.tile b{display:block;font-family:var(--mono);font-size:1.4rem;font-weight:500;font-variant-numeric:tabular-nums}
+.tile span{font-size:.75rem;color:var(--muted)}
+.tscroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.88rem}
+th,td{text-align:left;padding:.5rem .6rem;border-bottom:1px solid var(--line);vertical-align:top}
+#gapTable td:last-child{min-width:11rem}
+th{font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;font-family:var(--mono);font-size:.85rem}
+.pill{display:inline-block;padding:.1rem .5rem;border-radius:999px;font-size:.75rem;font-weight:600;white-space:normal}
+.pill.ok{background:var(--ok-bg);color:var(--ok)}.pill.warn{background:var(--warn-bg);color:var(--warn)}.pill.bad{background:var(--bad-bg);color:var(--bad)}
+.narr p{margin:0 0 .75rem;max-width:62ch}
+.stage{display:grid;grid-template-columns:5.5rem 1fr;gap:.75rem;padding:.6rem 0;border-top:1px solid var(--line)}
+.stage:first-of-type{border-top:0}
+.stage .k{font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--brand);font-weight:600;padding-top:.2rem}
+.stage p{margin:0}
+.abt{font-family:var(--display);font-size:1rem;line-height:1.55;background:var(--bg);border:1px solid var(--line);padding:.9rem 1rem;margin:.5rem 0 1rem}
+.abt em{font-style:normal;color:var(--accent);font-weight:600;letter-spacing:.04em;font-family:var(--body);font-size:.8rem}
+section.options{margin-top:1.5rem}
+section.options>p{max-width:72ch}
+.assume{margin:1rem 0 1.25rem}
+.hint{font-size:.85rem;color:var(--muted);margin:0 0 .6rem;max-width:72ch}
+.switches{display:flex;flex-wrap:wrap;gap:.5rem 1.25rem}
+.sw{display:flex;align-items:center;gap:.5rem;font-size:.9rem;cursor:pointer;padding:.35rem .5rem;border:1px solid var(--line);background:var(--bg)}
+.sw input{width:1.1rem;height:1.1rem;accent-color:var(--accent);margin:0}
+#optTable th:first-child,#optTable td:first-child{width:11rem;color:var(--muted);font-size:.78rem;letter-spacing:.04em;text-transform:uppercase;font-weight:600}
+#optTable thead th{font-size:.95rem;letter-spacing:0;text-transform:none;color:var(--fg);font-family:var(--display);font-weight:600;vertical-align:bottom}
+#optTable thead th:first-child{font-family:var(--body)}
+#optTable td{font-size:.88rem}
+#optTable td.num{font-size:.95rem;text-align:left}
+#optTable .rec{background:color-mix(in srgb,var(--accent) 10%,transparent)}
+#optTable .off{opacity:.45}
+#optTable .off .pill{opacity:1}
+#optTable .why{display:block;font-size:.78rem;color:var(--muted);margin-top:.25rem}
+.conf{font-size:.78rem;color:var(--muted);border-top:1px dashed var(--line);padding-top:.6rem;margin-top:1rem}
+.conf code{font-family:var(--mono)}
+details{margin-top:1rem;border:1px solid var(--line)}
+summary{cursor:pointer;padding:.6rem .9rem;font-weight:500}
+details pre{margin:0;padding:.9rem;font-family:var(--mono);font-size:.78rem;white-space:pre-wrap;border-top:1px solid var(--line);color:var(--fg)}
+.srtab{position:absolute;left:-9999px}
+footer{margin-top:2rem;font-size:.78rem;color:var(--muted);max-width:80ch}
+</style>
+<style>
+html,body{margin:0}
+img{max-width:100%}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <p class="eyebrow">Sample data from a fictional college. Drafted with AI and checked by the IR office.</p>
+  <h1>Pathway Gap Finder</h1>
+  <p class="lede">Does the schedule offer the courses a program's pathway says students need, in the term, at a time of day, and in a format they can attend? Pick a program and a student group; the table, the summary, and the options for the committee update together.</p>
+  <p class="note">Riverbend Community College is not a real college. The numbers are made up to show how this works. In practice, AI would help write the analysis and the summary, and the IR office would check the numbers before anyone shares them with a dean.</p>
+</header>
+
+<div class="controls" role="group" aria-label="Analysis controls">
+  <div class="ctl"><label for="prog">Program</label>
+    <select id="prog"><option value="nurs">Nursing (ADN)</option><option value="bus">Business Administration (AS-T)</option><option value="weld">Welding Technology (Cert)</option></select></div>
+  <div class="ctl"><label for="grp">Student group</label>
+    <select id="grp"><option value="all">All students</option><option value="pte">Part-time, evening availability</option></select></div>
+</div>
+
+<div class="grid">
+<section class="card" aria-labelledby="h-what">
+  <h2 id="h-what">Pathway vs. offering, Spring 2027 schedule</h2>
+  <p class="headline" id="tableHead"></p>
+  <div class="tiles" id="tiles"></div>
+  <div class="tscroll"><table id="gapTable" aria-describedby="tableHead">
+    <thead><tr><th>Course</th><th>Pathway term</th><th>Offered in term</th><th>Fits group's time</th><th class="num">Est. demand</th><th class="num">Seats</th><th class="num">Waitlist</th><th>Status</th></tr></thead>
+    <tbody></tbody></table></div>
+  <p class="conf">Estimated demand = students who have this course next on their educational plan, plus the number who usually repeat it. Seats = seats in sections offered at a time this group can attend. Checked by the IR office against the student information system (educational plans, sections, and waitlists) on October 19, 2026.</p>
+</section>
+
+<section class="card narr" aria-labelledby="h-narr">
+  <h2 id="h-narr">Summary for the committee</h2>
+  <div class="abt" id="abt"></div>
+  <div class="stage"><div class="k">What</div><p id="nWhat"></p></div>
+  <div class="stage"><div class="k">So what</div><p id="nSoWhat"></p></div>
+  <div class="stage"><div class="k">Now what</div><p id="nNowWhat"></p></div>
+  <div class="stage"><div class="k">What we don't know</div><p id="nCant"></p></div>
+  <details><summary>What the IR office asked the AI to write</summary>
+<pre>Write a short summary of this table for the scheduling committee. The
+program, student group, and scenario are shown above the table.
+
+1. Start with what the numbers show. No interpretation yet.
+2. Then give the most likely cause and one other possible cause.
+3. Then give three ways to fix it. Each should address the cause, not
+   just the symptom. At least one should change a policy or the course
+   sequence rather than add a service. One should cost less than the
+   obvious fix. For each, say what it assumes and name one number to
+   watch next term to see if it worked.
+4. Write one sentence that sums up the whole finding, in the form
+   "... and ... but ... therefore ...".
+5. Say plainly what this table does not tell us.
+
+Use plain language a dean would use. Short sentences. Say "the numbers
+show" for facts and "likely" or "probably" for your interpretation.
+Do not use any number that is not in the table.</pre></details>
+</section>
+</div>
+
+<section class="card options" aria-labelledby="h-opts">
+  <h2 id="h-opts">Weighing the options</h2>
+  <p id="mech"></p>
+  <div class="assume">
+    <h3>What we'd need to confirm first</h3>
+    <p class="hint">Switch an item off if the committee learns it isn't possible. The options that depend on it are set aside and the recommended starting point moves to the next one.</p>
+    <div class="switches" id="switches"></div>
+  </div>
+  <div class="tscroll"><table id="optTable"><thead></thead><tbody></tbody></table></div>
+  <p id="lead"></p>
+</section>
+
+<footer>How to read this page: the pathway term comes from the program's published course sequence. "Fits group's time" means a section that starts at or after 5:00 p.m. or is fully online. "Students helped next term" is the number of students in the selected group who would get a seat they don't have today. A real version of this page would read from the student information system; here the sample data is built into the page.</footer>
+</div>
+
+<script>
+const DATA = {
+ nurs:{name:"Nursing (ADN)",term:"Term 3",rows:[
+  {c:"NURS 130 Med-Surg I",t:"Term 3",off:true,day:true,eve:false,dem:84,seatsAll:80,seatsEve:0,wl:19},
+  {c:"NURS 135 Pharmacology",t:"Term 3",off:true,day:true,eve:true,dem:84,seatsAll:96,seatsEve:24,wl:0},
+  {c:"BIOL 240 Microbiology",t:"Term 3",off:true,day:true,eve:false,dem:91,seatsAll:72,seatsEve:0,wl:27},
+  {c:"PSYC 200 Lifespan Dev.",t:"Term 3",off:true,day:true,eve:true,dem:88,seatsAll:120,seatsEve:40,wl:0},
+  {c:"NURS 140 Clinical II",t:"Term 3",off:true,day:true,eve:false,dem:84,seatsAll:80,seatsEve:0,wl:12},
+  {c:"ENGL 102 Composition II",t:"Term 3",off:true,day:true,eve:true,dem:60,seatsAll:200,seatsEve:60,wl:0}],
+  pte:{share:.31,n:26},
+  bottleneck:"BIOL 240 Microbiology",
+  mech:"Microbiology is a prerequisite for Med-Surg I and is offered only in daytime lab sections. Students who can't attend during the day lose a full term before they can start the clinical sequence.",
+  rival:"It could also be that lab room space, not the time of day, is the real limit. If so, evening sections would need a second lab or a Saturday block.",
+  assume:[
+   {id:"lab",label:"A lab room and instructor are available after 5 p.m."},
+   {id:"curr",label:"Curriculum committee can approve a sequence change before the next catalog"},
+   {id:"wl",label:"Waitlist rules can be changed in the student information system"}],
+  opts:[
+   {h:"Add two evening Microbiology lab sections",p:"48 new seats. Fixes the cause directly.",cost:"About $38,000 per term",costN:38000,served:{all:48,pte:26},when:"Spring 2027",who:"Dean of Health Sciences; facilities",ind:"Evening students enrolled in Microbiology in the first 60 days of registration",needs:["lab"]},
+   {h:"Move Microbiology to Term 2 and Lifespan Development to Term 3",p:"Changes the sequence, not just the schedule, so Term 3 no longer has three daytime-only courses.",cost:"No direct cost",costN:0,served:{all:0,pte:0},when:"Fall 2027 catalog",who:"Curriculum committee",ind:"Share of students who have finished Microbiology when Term 3 starts",needs:["curr"]},
+   {h:"Hold seats for students whose plan calls for the course this term",p:"Gives those students waitlist priority. Keeps the students who need the course now from being shut out, but adds no seats.",cost:"Staff time only",costN:0,served:{all:19,pte:8},when:"Spring 2027",who:"Registrar",ind:"Students on the Microbiology waitlist at census who need it this term",needs:["wl"]}]
+ },
+ bus:{name:"Business Administration (AS-T)",term:"Term 2",rows:[
+  {c:"BUS 110 Intro to Business",t:"Term 2",off:true,day:true,eve:true,dem:142,seatsAll:210,seatsEve:70,wl:0},
+  {c:"ACCT 101 Financial Accounting",t:"Term 2",off:true,day:true,eve:true,dem:138,seatsAll:150,seatsEve:30,wl:6},
+  {c:"MATH 120 Statistics",t:"Term 2",off:true,day:true,eve:true,dem:131,seatsAll:300,seatsEve:90,wl:0},
+  {c:"ECON 101 Microeconomics",t:"Term 2",off:true,day:true,eve:false,dem:125,seatsAll:140,seatsEve:0,wl:4},
+  {c:"CIS 105 Business Computing",t:"Term 2",off:false,day:false,eve:false,dem:118,seatsAll:0,seatsEve:0,wl:0},
+  {c:"COMM 110 Public Speaking",t:"Term 2",off:true,day:true,eve:true,dem:97,seatsAll:180,seatsEve:60,wl:0}],
+  pte:{share:.44,n:52},
+  bottleneck:"CIS 105 Business Computing",
+  mech:"The pathway puts Business Computing in Term 2, but the department offers it only in fall. Students who start in spring either lose a term or take a substitute course that may not transfer.",
+  rival:"It could also be that advisors are already sending spring starters to an approved substitute. If so, the effect on completion may be smaller than the table suggests.",
+  assume:[
+   {id:"inst",label:"An instructor can be assigned to a spring section of CIS 105"},
+   {id:"artic",label:"The transfer agreement allows the courses in either order"},
+   {id:"sub",label:"A substitute course exists that transfers"}],
+  opts:[
+   {h:"Offer CIS 105 every term, with one online section",p:"Closes the gap for fall and spring starters at once. An online section needs no classroom.",cost:"About $9,000 per term",costN:9000,served:{all:118,pte:52},when:"Spring 2027",who:"Business department chair",ind:"Spring starters who finish CIS 105 by the end of Term 2",needs:["inst"]},
+   {h:"Publish a fall-start pathway and a spring-start pathway",p:"Changes the sequence, not just the schedule. Gives the half of students who start in spring a map that works.",cost:"No direct cost",costN:0,served:{all:0,pte:0},when:"Fall 2027 catalog",who:"Curriculum committee; articulation officer",ind:"Spring starters who are on sequence when Term 3 starts",needs:["artic"]},
+   {h:"Approve a standing substitute course for spring starters",p:"Costs the least. Works only if the substitute transfers.",cost:"Staff time only",costN:0,served:{all:118,pte:52},when:"Spring 2027",who:"Articulation officer",ind:"Substitutes approved compared with the number of spring starters",needs:["sub"]}]
+ },
+ weld:{name:"Welding Technology (Cert)",term:"Term 2",rows:[
+  {c:"WELD 120 SMAW II",t:"Term 2",off:true,day:true,eve:true,dem:46,seatsAll:48,seatsEve:16,wl:3},
+  {c:"WELD 125 GMAW",t:"Term 2",off:true,day:true,eve:true,dem:46,seatsAll:48,seatsEve:16,wl:2},
+  {c:"WELD 130 Blueprint Reading",t:"Term 2",off:true,day:false,eve:true,dem:44,seatsAll:32,seatsEve:32,wl:11},
+  {c:"MATH 105 Technical Math",t:"Term 2",off:true,day:true,eve:true,dem:40,seatsAll:120,seatsEve:40,wl:0},
+  {c:"WELD 140 Fabrication",t:"Term 2",off:true,day:true,eve:false,dem:46,seatsAll:32,seatsEve:0,wl:14}],
+  pte:{share:.58,n:27},
+  bottleneck:"WELD 140 Fabrication",
+  mech:"Fabrication is offered only in the daytime shop block, but most welding students work during the day. Blueprint Reading is offered only in the evening. So neither group can take both required courses in the same term.",
+  rival:"It could also be that the shop can't be staffed safely after 5 p.m., and that, not instructor availability, is what keeps Fabrication out of the evening.",
+  assume:[
+   {id:"shop",label:"The shop can be staffed safely after 5 p.m."},
+   {id:"online",label:"The blueprint lab work can be done online"},
+   {id:"accr",label:"The accreditor and financial aid will review a shorter term this year"}],
+  opts:[
+   {h:"Offer Fabrication and Blueprint Reading together in one evening block",p:"Two nights a week. Fixes both problems at once.",cost:"About $22,000 per term",costN:22000,served:{all:32,pte:27},when:"Spring 2027",who:"Dean of Career and Technical Education; facilities",ind:"Students who finish both courses in Term 2",needs:["shop"]},
+   {h:"Offer Blueprint Reading online and keep Fabrication in the daytime shop",p:"Costs less and frees up the evening. Helps with Blueprint Reading only; Fabrication stays daytime.",cost:"About $6,000 one time",costN:6000,served:{all:12,pte:11},when:"Spring 2027",who:"Welding department chair",ind:"Students on the Blueprint Reading waitlist at census",needs:["online"]},
+   {h:"Move the certificate to a 12-week block schedule with day and evening cohorts",p:"Changes the program structure to fit students who work.",cost:"A planning year",costN:null,served:{all:0,pte:0},when:"Fall 2028",who:"Accreditor; financial aid; curriculum committee",ind:"Students who finish the certificate within 12 months",needs:["accr"]}]
+ }
+};
+const $=s=>document.querySelector(s);
+const prog=$("#prog"),grp=$("#grp");
+const assumeState={};
+function buildSwitches(d){
+  const box=$("#switches");
+  box.innerHTML=d.assume.map(a=>{
+    if(assumeState[a.id]===undefined)assumeState[a.id]=true;
+    return `<label class="sw"><input type="checkbox" id="sw-${a.id}" data-id="${a.id}" ${assumeState[a.id]?"checked":""}> ${a.label}</label>`;
+  }).join("");
+  box.querySelectorAll("input").forEach(i=>i.addEventListener("change",e=>{assumeState[e.target.dataset.id]=e.target.checked;render();}));
+}
+function money(n){return n==null?"—":n===0?"$0":"$"+n.toLocaleString("en-US");}
+function renderOptions(d,g){
+  const avail=d.opts.map(o=>o.needs.every(k=>assumeState[k]!==false));
+  const recIdx=avail.indexOf(true);
+  const names=d.assume.reduce((m,a)=>(m[a.id]=a.label,m),{});
+  const head=$("#optTable thead"),body=$("#optTable tbody");
+  head.innerHTML="<tr><th scope=\"col\">&nbsp;</th>"+d.opts.map((o,i)=>`<th scope="col" class="${i===recIdx?"rec":""}${avail[i]?"":" off"}">${o.h}${i===recIdx?" <span class='pill ok'>recommended starting point</span>":""}${avail[i]?"":` <span class='pill bad'>set aside</span>`}</th>`).join("")+"</tr>";
+  const cell=(i,html,cls="")=>`<td class="${i===recIdx?"rec ":""}${avail[i]?"":"off "}${cls}">${html}</td>`;
+  const rowsSpec=[
+   ["What it does",o=>o.p],
+   ["Students helped next term",(o,i)=>{const n=o.served[g];return n===0?`0<span class="why">Helps future students once the change takes effect, not students waiting now.</span>`:String(n);},"num"],
+   ["Cost",o=>o.cost,"num"],
+   ["Cost per student helped",o=>{const n=o.served[g];if(o.costN==null||n===0)return "—";if(o.costN===0)return "Staff time only";return money(Math.round(o.costN/n));},"num"],
+   ["When it takes effect",o=>o.when],
+   ["Who has to approve it",o=>o.who],
+   ["What it depends on",(o,i)=>o.needs.map(k=>`${names[k]}${assumeState[k]===false?" <span class='pill bad'>not possible</span>":""}`).join("<br>")],
+   ["Number to watch",o=>o.ind]
+  ];
+  body.innerHTML=rowsSpec.map(([label,fn,cls])=>`<tr><th scope="row">${label}</th>${d.opts.map((o,i)=>cell(i,fn(o,i),cls||"")).join("")}</tr>`).join("");
+  if(recIdx===-1){
+    $("#lead").innerHTML=`<strong>How we'll know:</strong> every option on the table depends on something the committee has found isn't possible. The next step is to go back to the cause and look for a different fix before choosing.`;
+  } else {
+    $("#lead").innerHTML=`<strong>How we'll know:</strong> look at the number to watch for the option the committee picks at Spring 2027 census (February 2027), and report back to this committee. If the number hasn't moved, the other explanation is probably the right one, and the committee should look there next.`;
+  }
+}
+let lastProg=null;
+function render(){
+  const d=DATA[prog.value],g=grp.value;
+  if(lastProg!==prog.value){buildSwitches(d);lastProg=prog.value;}
+  const rows=d.rows.map(r=>{
+    const dem=g==="pte"?Math.round(r.dem*d.pte.share):r.dem;
+    let seats=g==="pte"?r.seatsEve:r.seatsAll;
+    const fits=g==="pte"?r.eve:(r.day||r.eve);
+    let status,cls;
+    if(!r.off){status="Not offered this term";cls="bad"}
+    else if(!fits){status="No section at a time these students can attend";cls="bad"}
+    else if(seats<dem){status="Short "+(dem-seats)+" seats";cls="warn"}
+    else{status="Enough seats";cls="ok"}
+    return {...r,dem,seats,fits,status,cls};
+  });
+  const bad=rows.filter(r=>r.cls==="bad").length,short=rows.filter(r=>r.cls==="warn").length;
+  const gap=rows.reduce((a,r)=>a+Math.max(0,r.dem-(r.off&&r.fits?r.seats:0)),0);
+  const who=g==="pte"?"part-time evening students":"students";
+  $("#tableHead").textContent=`${d.name}, ${d.term}: ${bad} of ${rows.length} required courses ${bad===1?"is":"are"} not available to ${who} and ${short} more ${short===1?"does":"do"} not have enough seats.`;
+  $("#tiles").innerHTML=[[rows.length,"required courses this term"],[bad+short,"courses with a problem"],[gap,"students without a seat"]].map(([v,l])=>`<div class="tile"><b>${v}</b><span>${l}</span></div>`).join("");
+  $("#gapTable tbody").innerHTML=rows.map(r=>`<tr><td>${r.c}</td><td>${r.t}</td><td>${r.off?"Yes":"No"}</td><td>${r.off?(r.fits?"Yes":"No"):"—"}</td><td class="num">${r.dem}</td><td class="num">${r.seats}</td><td class="num">${r.wl}</td><td><span class="pill ${r.cls}">${r.status}</span></td></tr>`).join("");
+  const b=rows.find(r=>r.c===d.bottleneck);
+  const groupName=g==="pte"?`part-time evening students (${d.pte.n} of them in this program)`:"students in this program";
+  const okCount=rows.filter(r=>r.cls==="ok").length;
+  const bShort=b.off?(b.fits?`has ${b.seats} seats for ${b.dem} students`:"has no section they can attend"):"is not offered this term";
+  const unavailText=g==="pte"?"no section at a time these students can attend":"not offered this term";
+  $("#abt").innerHTML=`<em>AND</em> the ${d.name} pathway calls for ${rows.length} courses in ${d.term}, and ${okCount} of them have enough seats for ${groupName}, <em>BUT</em> ${b.c} ${bShort}, and students can't move on without it, <em>THEREFORE</em> the problem is in one course, not across the whole schedule, and the fix is that course's time and seat count, not a general retention effort.`;
+  $("#nWhat").textContent=`Of the ${rows.length} required courses in ${d.term}, ${bad} ${bad===1?"has":"have"} ${unavailText} and ${short} ${short===1?"does":"do"} not have enough seats. The biggest shortfall is ${b.c}: ${b.dem} students need it, ${b.off&&b.fits?b.seats:0} seats are available to them, and ${b.wl} students were on the waitlist last term. ${okCount} courses have enough seats.`;
+  $("#nSoWhat").textContent=`${d.mech} ${d.rival} These two explanations lead to different fixes, so the committee should find out which one is the real issue before choosing.`;
+  $("#nNowWhat").textContent=`Three ways to fix this are laid out below the summary. Each one addresses the cause, not just the symptom. One is marked as a recommended starting point, but the committee makes the call. Each option names one number to watch next term so the committee can see whether it worked.`;
+  $("#nCant").textContent=`This table doesn't tell us why some students reach this term late, whether the students on the waitlist took the course somewhere else, or whether the real limit is classroom space, lab space, or staffing. It uses estimated demand, not actual enrollments.`;
+  $("#mech").innerHTML=`<strong>What we think is causing this:</strong> ${d.mech}`;
+  renderOptions(d,g);
+}
+[prog,grp].forEach(el=>el.addEventListener("input",render));
+render();
+</script>
+</body>
+</html>
